@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Foge Foge</title>
+<style>
+    body { font-family: monospace; background-color: #111; color: #eee; }
+    .mapa { line-height: 1.2em; }
+    .parede { color: #f00; }
+    .heroi { color: #0f0; }
+    .fantasma { color: #f0f; }
+    .pilula { color: #ff0; }
+    .vazio { color: #888; }
+</style>
+</head>
+<body>
+<h1>Foge Foge</h1>
+<p>Pilula: <span id="pilula">NAO</span></p>
+<pre class="mapa" id="mapa"></pre>
+<p>Use as teclas <b>W A S D</b> para mover e <b>B</b> para explodir a pilula.</p>
+
+<script>
+const HEROI = '@';
+const FANTASMA = 'F';
+const PILULA = 'P';
+const VAZIO = '.';
+const PAREDE_VERTICAL = '|';
+const PAREDE_HORIZONTAL = '-';
+
+let mapa = [
+    ['|','-','-','-','-','-','-','-','-','|'],
+    ['|','.','F','.','|','.','.','-','.','|'],
+    ['|','.','.','_','|','.','@','P','.','|'],
+    ['|','.','.','F','.','.','.','-','.','|'],
+    ['|','-','-','-','-','-','-','-','-','|']
+];
+
+let heroi = {x:2, y:6};
+let tempilula = false;
+
+// Renderiza o mapa no HTML
+function renderMapa() {
+    const pilulaEl = document.getElementById("pilula");
+    pilulaEl.textContent = tempilula ? "SIM" : "NAO";
+
+    const mapaEl = document.getElementById("mapa");
+    let output = "";
+    for(let i=0;i<mapa.length;i++){
+        for(let j=0;j<mapa[i].length;j++){
+            let c = mapa[i][j];
+            if(c === HEROI) output += "%c@";
+            else if(c === FANTASMA) output += "%cF";
+            else if(c === PILULA) output += "%cP";
+            else if(c === PAREDE_VERTICAL || c === PAREDE_HORIZONTAL) output += "%c#";
+            else output += "%c.";
+        }
+        output += "\n";
+    }
+    console.clear();
+    console.log(output,
+        ...mapa.flat().map(c => 
+            c===HEROI ? "color: green" :
+            c===FANTASMA ? "color: magenta" :
+            c===PILULA ? "color: yellow" :
+            (c===PAREDE_VERTICAL||c===PAREDE_HORIZONTAL) ? "color: red" :
+            "color: grey"
+        )
+    );
+}
+
+// Checa se a posição é válida
+function podeAndar(x,y){
+    if(x<0||x>=mapa.length||y<0||y>=mapa[0].length) return false;
+    if(mapa[x][y] === PAREDE_VERTICAL || mapa[x][y] === PAREDE_HORIZONTAL) return false;
+    if(mapa[x][y] === HEROI || mapa[x][y] === FANTASMA) return false;
+    return true;
+}
+
+// Movimento do herói
+function movePers(dx,dy){
+    let nx = heroi.x + dx;
+    let ny = heroi.y + dy;
+    if(!podeAndar(nx,ny)) return;
+    if(mapa[nx][ny] === PILULA) tempilula = true;
+    mapa[heroi.x][heroi.y] = VAZIO;
+    heroi.x = nx;
+    heroi.y = ny;
+    mapa[heroi.x][heroi.y] = HEROI;
+}
+
+// Movimento aleatório do fantasma
+function moveFantasma(){
+    for(let i=0;i<mapa.length;i++){
+        for(let j=0;j<mapa[i].length;j++){
+            if(mapa[i][j]===FANTASMA){
+                const opcoes = [[0,1],[1,0],[0,-1],[-1,0]];
+                const escolha = opcoes[Math.floor(Math.random()*4)];
+                let nx = i + escolha[0];
+                let ny = j + escolha[1];
+                if(podeAndar(nx,ny)){
+                    mapa[nx][ny] = FANTASMA;
+                    mapa[i][j] = VAZIO;
+                }
+            }
+        }
+    }
+}
+
+// Explosão da pilula
+function explodePilula(){
+    if(!tempilula) return;
+    const direcoes = [[0,1],[0,-1],[1,0],[-1,0]];
+    for(const d of direcoes) explodePilula2(heroi.x,heroi.y,d[0],d[1],3);
+    tempilula = false;
+}
+
+function explodePilula2(x,y,dx,dy,qtd){
+    if(qtd===0) return;
+    let nx = x+dx;
+    let ny = y+dy;
+    if(nx<0||nx>=mapa.length||ny<0||ny>=mapa[0].length) return;
+    if(mapa[nx][ny]===PAREDE_VERTICAL||mapa[nx][ny]===PAREDE_HORIZONTAL) return;
+    mapa[nx][ny] = VAZIO;
+    explodePilula2(nx,ny,dx,dy,qtd-1);
+}
+
+// Checa fim de jogo
+function acabou(){
+    let heroiPresente = mapa.flat().includes(HEROI);
+    let fantasmaPresente = mapa.flat().includes(FANTASMA);
+    return !heroiPresente || !fantasmaPresente;
+}
+
+// Eventos de teclado
+document.addEventListener("keydown", (e)=>{
+    switch(e.key.toLowerCase()){
+        case 'w': movePers(-1,0); break;
+        case 's': movePers(1,0); break;
+        case 'a': movePers(0,-1); break;
+        case 'd': movePers(0,1); break;
+        case 'b': explodePilula(); break;
+    }
+    moveFantasma();
+    renderMapa();
+    if(acabou()) alert("Fim de Jogo!");
+});
+
+// Inicializa
+renderMapa();
+</script>
+</body>
+</html>
